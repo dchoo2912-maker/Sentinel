@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,11 +49,21 @@ fun CommunityRiskMapScreen(
 
     val blue600 = Color(0xFF2563EB)
     val red600 = Color(0xFFDC2626)
+    val red500 = Color(0xFFEF4444)
+    val orange500 = Color(0xFFF97316)
+    val green600 = Color(0xFF16A34A)
     val slate900 = Color(0xFF0F172A)
     val slate400 = Color(0xFF94A3B8)
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(uiState.currentLocation, 12f)
+        position = CameraPosition.fromLatLngZoom(uiState.currentLocation, 14f)
+    }
+
+    // Determine colors for the 1km radius zone
+    val zoneColor = when {
+        uiState.immediateSafetyScore >= 90 -> green600
+        uiState.immediateSafetyScore >= 70 -> orange500
+        else -> red600
     }
 
     LaunchedEffect(cameraPositionState.isMoving) {
@@ -75,12 +86,21 @@ fun CommunityRiskMapScreen(
                 uiState.incidents.forEach { incident ->
                     Circle(
                         center = LatLng(incident.latitude, incident.longitude),
-                        radius = 300.0,
-                        fillColor = red600.copy(alpha = 0.3f),
-                        strokeColor = red600,
+                        radius = 200.0,
+                        fillColor = red500.copy(alpha = 0.2f),
+                        strokeColor = red500,
                         strokeWidth = 2f
                     )
                 }
+
+                // 1 KM RADIUS ZONE AROUND USER
+                Circle(
+                    center = uiState.currentLocation,
+                    radius = 1000.0, // 1 km
+                    fillColor = zoneColor.copy(alpha = 0.15f),
+                    strokeColor = zoneColor,
+                    strokeWidth = 4f
+                )
 
                 // Show Active Contacts/Users Locations
                 uiState.activeLocations.forEach { (userId, location) ->
@@ -151,20 +171,42 @@ fun CommunityRiskMapScreen(
                 }
             }
 
-            // FLOATING: Safety Badge
-            Surface(
-                color = if (mapCenterScore > 70) Color(0xFFDCFCE7).copy(alpha = 0.9f) else Color(0xFFFEE2E2).copy(alpha = 0.9f),
-                shape = RoundedCornerShape(20.dp),
+            // FLOATING: Danger Level Indicators
+            Row(
                 modifier = Modifier
                     .statusBarsPadding()
                     .padding(top = 80.dp)
-                    .align(Alignment.TopCenter),
-                shadowElevation = 4.dp
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Shield, null, tint = if (mapCenterScore > 70) Color(0xFF16A34A) else Color(0xFFDC2626), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Area Safety: $mapCenterScore", color = if (mapCenterScore > 70) Color(0xFF16A34A) else Color(0xFFDC2626), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                // Immediate 1km Zone Score
+                Surface(
+                    color = zoneColor,
+                    shape = RoundedCornerShape(20.dp),
+                    shadowElevation = 6.dp
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (uiState.immediateSafetyScore < 70) Icons.Default.Warning else Icons.Default.Shield, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Nearby Safety: ${uiState.immediateSafetyScore}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                    }
+                }
+                
+                Spacer(Modifier.width(8.dp))
+
+                // Map Center Score (Looking ahead)
+                Surface(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(20.dp),
+                    shadowElevation = 4.dp
+                ) {
+                    Text(
+                        "Map View: $mapCenterScore", 
+                        color = slate900,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
                 }
             }
 
@@ -191,11 +233,21 @@ fun CommunityRiskMapScreen(
             shadowElevation = 16.dp
         ) {
             Column(modifier = Modifier.navigationBarsPadding().padding(20.dp)) {
-                Text("Risk Analysis", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("1 km Radius Analysis", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Spacer(Modifier.weight(1f))
+                    val zoneStatus = when {
+                        uiState.immediateSafetyScore >= 90 -> "SAFE"
+                        uiState.immediateSafetyScore >= 70 -> "CAUTION"
+                        else -> "DANGER"
+                    }
+                    Text(zoneStatus, color = zoneColor, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                }
+                
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    LegendItem(red600, "Active Alerts", "${uiState.incidents.size}", Modifier.weight(1f))
+                    LegendItem(red600, "Nearby Risks", "${uiState.incidents.filter { calculateDistance(uiState.currentLocation.latitude, uiState.currentLocation.longitude, it.latitude, it.longitude) < 1.0 }.size}", Modifier.weight(1f))
                     LegendItem(blue600, "Active Users", "${uiState.activeLocations.size}", Modifier.weight(1f))
                 }
 
@@ -212,6 +264,17 @@ fun CommunityRiskMapScreen(
             }
         }
     }
+}
+
+private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6371.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return r * c
 }
 
 @Composable

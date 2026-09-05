@@ -24,7 +24,8 @@ data class DashboardUiState(
     val currentLocation: LatLng = LatLng(34.0522, -118.2437), // Default to LA
     val isSharingLocation: Boolean = false,
     val activeLocations: Map<String, LatLng> = emptyMap(),
-    val allowedContactIds: List<String> = emptyList()
+    val allowedContactIds: List<String> = emptyList(),
+    val immediateSafetyScore: Int = 100 // 1km radius score
 )
 
 class DashboardViewModel : ViewModel() {
@@ -128,15 +129,23 @@ class DashboardViewModel : ViewModel() {
         val userLoc = _uiState.value.currentLocation
         val incidents = _uiState.value.incidents
         
-        val nearbyIncidents = incidents.filter { incident ->
-            val dist = calculateDistance(userLoc.latitude, userLoc.longitude, incident.latitude, incident.longitude)
-            dist < 5.0 // 5km radius
+        // 5km Radius Score (General)
+        val nearbyIncidents5km = incidents.filter { incident ->
+            calculateDistance(userLoc.latitude, userLoc.longitude, incident.latitude, incident.longitude) < 5.0
         }
 
-        val newScore = (100 - (nearbyIncidents.size * 5)).coerceIn(30, 100)
+        // 1km Radius Score (Immediate)
+        val nearbyIncidents1km = incidents.filter { incident ->
+            calculateDistance(userLoc.latitude, userLoc.longitude, incident.latitude, incident.longitude) < 1.0
+        }
+
+        val generalScore = (100 - (nearbyIncidents5km.size * 5)).coerceIn(30, 100)
+        val immediateScore = (100 - (nearbyIncidents1km.size * 20)).coerceIn(0, 100) // Much steeper penalty for 1km
+
         _uiState.value = _uiState.value.copy(
-            safetyScore = newScore,
-            isProtected = newScore > 70
+            safetyScore = generalScore,
+            immediateSafetyScore = immediateScore,
+            isProtected = generalScore > 70
         )
     }
 
