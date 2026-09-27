@@ -22,11 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sentinel.domain.RiskLevel
 import com.example.sentinel.viewmodel.DashboardViewModel
 import com.example.sentinel.viewmodel.NavigationViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.*
 
 @Composable
@@ -65,10 +68,18 @@ fun SafeRouteNavigationScreen(
             properties = MapProperties(isMyLocationEnabled = true),
             uiSettings = MapUiSettings(zoomControlsEnabled = false)
         ) {
+            uiState.origin?.let {
+                Marker(
+                    state = rememberMarkerState(position = it),
+                    title = "Start Point",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                )
+            }
+
             uiState.routes.getOrNull(uiState.selectedRouteIndex)?.let { route ->
                 Polyline(
                     points = route.points,
-                    color = green600,
+                    color = Color(RiskLevel.fromScore(route.safetyScore).color),
                     width = 10f
                 )
                 
@@ -76,6 +87,16 @@ fun SafeRouteNavigationScreen(
                     state = rememberMarkerState(position = route.points.last()),
                     title = uiState.destinationName
                 )
+                
+                // Adjust camera to show entire route
+                val bounds = remember(route.points) {
+                    val b = LatLngBounds.Builder()
+                    route.points.forEach { b.include(it) }
+                    b.build()
+                }
+                LaunchedEffect(bounds) {
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                }
             }
 
             // Also show risk zones
@@ -127,24 +148,25 @@ fun SafeRouteNavigationScreen(
                                 "AIzaSyCR1RVrLJCAH7DOPTw6qHVddHCu1-iTJ3M",
                                 dashboardState.incidents
                             )
-                        })
-                    )
-
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        IconButton(onClick = {
-                            focusManager.clearFocus()
-                            viewModel.findSafeRoute(
-                                context,
-                                searchQuery, 
-                                "AIzaSyCR1RVrLJCAH7DOPTw6qHVddHCu1-iTJ3M",
-                                dashboardState.incidents
-                            )
-                        }) {
-                            Icon(Icons.Default.Search, null, tint = slate400)
+                        }),
+                        trailingIcon = {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                IconButton(onClick = {
+                                    focusManager.clearFocus()
+                                    viewModel.findSafeRoute(
+                                        context,
+                                        searchQuery, 
+                                        "AIzaSyCR1RVrLJCAH7DOPTw6qHVddHCu1-iTJ3M",
+                                        dashboardState.incidents
+                                    )
+                                }) {
+                                    Icon(Icons.Default.Search, null, tint = slate400)
+                                }
+                            }
                         }
-                    }
+                    )
                 }
             }
             
@@ -181,18 +203,20 @@ fun SafeRouteNavigationScreen(
                             }
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text("Safest Route Found", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${currentRoute.distance} · ${currentRoute.duration}", color = slate400, fontSize = 14.sp)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Surface(color = Color(0xFFDCFCE7), shape = RoundedCornerShape(8.dp)) {
-                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Shield, null, tint = green600, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("${currentRoute.safetyScore}", color = green600, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                Column {
+                    val routeRisk = remember(currentRoute.safetyScore) { RiskLevel.fromScore(currentRoute.safetyScore) }
+                    Text(routeRisk.label + " ROUTE", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(routeRisk.color))
+                    Text("${currentRoute.distance} · ${currentRoute.duration}", color = slate400, fontSize = 14.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                val routeRiskIcon = remember(currentRoute.safetyScore) { RiskLevel.fromScore(currentRoute.safetyScore) }
+                Surface(color = Color(routeRiskIcon.color).copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Shield, null, tint = Color(routeRiskIcon.color), modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(routeRiskIcon.label, color = Color(routeRiskIcon.color), fontWeight = FontWeight.Bold)
+                    }
+                }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))

@@ -22,10 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sentinel.SentinelScreen
 import com.example.sentinel.domain.ActivityType
+import com.example.sentinel.domain.RiskLevel
 import com.example.sentinel.domain.SafetyActivity
 import com.example.sentinel.viewmodel.DashboardViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 
@@ -33,15 +35,40 @@ import com.google.accompanist.permissions.shouldShowRationale
 @Composable
 fun HomeDashboard(viewModel: DashboardViewModel, onNavigate: (String) -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    var showPermissionRationale by remember { mutableStateOf(false) }
     
-    val locationPermissionState = rememberPermissionState(
-        android.Manifest.permission.ACCESS_FINE_LOCATION
+    val locationPermissions = rememberMultiplePermissionsState(
+        listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
     )
 
     LaunchedEffect(Unit) {
-        if (!locationPermissionState.status.isGranted) {
-            locationPermissionState.launchPermissionRequest()
+        if (!locationPermissions.allPermissionsGranted) {
+            showPermissionRationale = true
         }
+    }
+
+    if (showPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationale = false },
+            title = { Text("Location Access Required", fontWeight = FontWeight.Bold) },
+            text = { Text("Sentinel uses your location to calculate real-time safety scores, show nearby risks within 1km, and allow safe route navigation. Please grant location access for the full experience.") },
+            confirmButton = {
+                Button(onClick = { 
+                    locationPermissions.launchMultiplePermissionRequest()
+                    showPermissionRationale = false 
+                }) {
+                    Text("Grant Access")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationale = false }) {
+                    Text("Maybe Later")
+                }
+            }
+        )
     }
 
     val blue600 = Color(0xFF2563EB)
@@ -53,7 +80,7 @@ fun HomeDashboard(viewModel: DashboardViewModel, onNavigate: (String) -> Unit) {
             .fillMaxSize()
             .background(Color.White)
             .statusBarsPadding()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 16.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(24.dp))
@@ -74,7 +101,7 @@ fun HomeDashboard(viewModel: DashboardViewModel, onNavigate: (String) -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item { Spacer(modifier = Modifier.height(100.dp)) }
     }
 }
 
@@ -103,13 +130,14 @@ fun Header(userName: String) {
 
 @Composable
 fun StatusCard(blue600: Color, blue800: Color, isProtected: Boolean, score: Int) {
-    val cardColors = when {
-        score >= 90 -> listOf(blue600, blue800)
-        score >= 70 -> listOf(Color(0xFFF59E0B), Color(0xFFD97706)) // Orange/Amber
-        else -> listOf(Color(0xFFDC2626), Color(0xFF991B1B)) // Red
+    val risk = RiskLevel.fromScore(score)
+    val cardColors = when (risk) {
+        RiskLevel.SAFE -> listOf(blue600, blue800)
+        RiskLevel.CAUTION -> listOf(Color(risk.color), Color(0xFFD97706))
+        RiskLevel.HIGH_RISK -> listOf(Color(risk.color), Color(0xFF991B1B))
     }
     
-    val statusColor = if (score >= 90) Color(0xFF86EFAC) else Color.White
+    val statusColor = if (risk == RiskLevel.SAFE) Color(0xFF86EFAC) else Color.White
 
     Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(cardColors), shape = RoundedCornerShape(24.dp))) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -119,7 +147,7 @@ fun StatusCard(blue600: Color, blue800: Color, isProtected: Boolean, score: Int)
                         Surface(modifier = Modifier.size(8.dp), color = statusColor, shape = CircleShape) {}
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            if (isProtected) "PROTECTED" else "VULNERABLE", 
+                            risk.label, 
                             color = statusColor, 
                             fontSize = 12.sp, 
                             fontWeight = FontWeight.Bold
@@ -128,14 +156,14 @@ fun StatusCard(blue600: Color, blue800: Color, isProtected: Boolean, score: Int)
                 }
                 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("$score", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                    Text("Safety Score", color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(risk.label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("Current Status", color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                if (score >= 90) "All Systems Active" 
-                else if (score >= 70) "Caution Advised" 
+                if (risk == RiskLevel.SAFE) "All Systems Active" 
+                else if (risk == RiskLevel.CAUTION) "Caution Advised" 
                 else "High Risk Detected", 
                 color = Color.White, 
                 fontSize = 24.sp, 

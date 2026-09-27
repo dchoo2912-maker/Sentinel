@@ -59,7 +59,7 @@ fun AuthScreen(viewModel: AuthViewModel, onAuthenticated: () -> Unit) {
             .background(Color.White)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(24.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         // Logo

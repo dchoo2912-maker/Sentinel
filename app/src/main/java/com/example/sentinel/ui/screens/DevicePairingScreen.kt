@@ -52,9 +52,10 @@ fun DevicePairingScreen(viewModel: DeviceViewModel, onPaired: () -> Unit, onBack
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color.White
+        containerColor = Color.White,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(24.dp)) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             Text("Pair Your Device", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Text("Connect your Sentinel hardware for the full experience.", fontSize = 16.sp, color = slate400, modifier = Modifier.padding(top = 8.dp))
 
@@ -84,11 +85,12 @@ fun DevicePairingScreen(viewModel: DeviceViewModel, onPaired: () -> Unit, onBack
                 items(uiState.devices) { device ->
                     DeviceRow(device, blue600, slate50) { viewModel.connectDevice(device) }
                 }
+                item { Spacer(Modifier.height(100.dp)) }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            TextButton(onClick = onPaired, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            TextButton(onClick = onPaired, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp)) {
                 Text("Skip for now", color = slate400)
             }
         }

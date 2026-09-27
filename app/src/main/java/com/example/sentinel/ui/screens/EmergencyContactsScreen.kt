@@ -62,7 +62,8 @@ fun EmergencyContactsScreen(viewModel: ContactsViewModel, onBack: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color(0xFFF1F5F9)
+        containerColor = Color(0xFFF1F5F9),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -70,7 +71,7 @@ fun EmergencyContactsScreen(viewModel: ContactsViewModel, onBack: () -> Unit) {
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 24.dp),
+                modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -106,7 +107,7 @@ fun EmergencyContactsScreen(viewModel: ContactsViewModel, onBack: () -> Unit) {
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(24.dp)) }
+                item { Spacer(modifier = Modifier.height(100.dp)) }
             }
         }
     }

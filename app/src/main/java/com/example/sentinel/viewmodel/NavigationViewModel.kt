@@ -62,6 +62,11 @@ class NavigationViewModel : ViewModel() {
             return
         }
         
+        if (destinationName.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Please enter a destination.")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, destinationName = destinationName)
             
@@ -88,16 +93,22 @@ class NavigationViewModel : ViewModel() {
             try {
                 android.util.Log.d("SafeRoute", "Attempting OSRM (Free alternative)...")
                 val geocoder = Geocoder(context, Locale.getDefault())
-                val destCoords = geocoder.getFromLocationName(destinationName, 1)?.firstOrNull()
+                val results = geocoder.getFromLocationName(destinationName, 1)
                 
-                if (destCoords != null) {
+                if (!results.isNullOrEmpty()) {
+                    val destCoords = results[0]
                     val coordsParam = "${origin.longitude},${origin.latitude};${destCoords.longitude},${destCoords.latitude}"
                     val response = osrmService.getRoute(coordsParam)
                     
                     if (response.code == "Ok") {
                         processOsrmRoutes(response.routes, incidents)
                         return@launch
+                    } else {
+                        android.util.Log.w("SafeRoute", "OSRM API returned error code: ${response.code}")
                     }
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Could not find that location. Please try a more specific address.")
+                    return@launch
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SafeRoute", "OSRM Error", e)

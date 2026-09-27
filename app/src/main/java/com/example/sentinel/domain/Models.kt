@@ -68,6 +68,18 @@ data class RiskZone(
     val reportCount: Int = 0
 )
 
-enum class RiskLevel {
-    HIGH, MODERATE, LOW, SAFE
+enum class RiskLevel(val label: String, val color: Long) {
+    SAFE("SAFE", 0xFF16A34A),
+    CAUTION("CAUTION", 0xFFF59E0B),
+    HIGH_RISK("HIGH RISK", 0xFFDC2626);
+
+    companion object {
+        fun fromScore(score: Int): RiskLevel {
+            return when {
+                score >= 90 -> SAFE
+                score >= 70 -> CAUTION
+                else -> HIGH_RISK
+            }
+        }
+    }
 }

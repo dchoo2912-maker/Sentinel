@@ -43,10 +43,13 @@ fun ProfileSettingsScreen(
     val blue800 = Color(0xFF1E40AF)
     val clipboardManager = LocalClipboardManager.current
 
-    Scaffold(containerColor = Color(0xFFF1F5F9)) { padding ->
+    Scaffold(
+        containerColor = Color(0xFFF1F5F9),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
             // Profile Hero
-            Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(blue600, blue800))).statusBarsPadding().padding(24.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(blue600, blue800))).statusBarsPadding().padding(horizontal = 16.dp, vertical = 24.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Surface(modifier = Modifier.size(80.dp), shape = CircleShape, color = Color.White.copy(alpha = 0.2f)) {
                         Box(contentAlignment = Alignment.Center) { Text(user?.name?.take(1)?.uppercase() ?: "U", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp) }
@@ -90,7 +93,7 @@ fun ProfileSettingsScreen(
                 }
             }
 
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     QuickNavCard(Modifier.weight(1f), "Contacts", Icons.Default.Group, onNavigateToContacts)
                     QuickNavCard(Modifier.weight(1f), "Device", Icons.Default.Devices, onNavigateToDevice)
@@ -115,7 +118,7 @@ fun ProfileSettingsScreen(
                         Text("Sign Out", color = Color.Red, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
     }

@@ -61,9 +61,10 @@ fun ReportIncidentScreen(viewModel: IncidentViewModel, onBack: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color(0xFFF1F5F9)
+        containerColor = Color(0xFFF1F5F9),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
             ReportCard("Incident Category") {
                 val categories = listOf("Theft", "Assault", "Suspicious", "Vandalism", "Harassment", "Other")
                 LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(180.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
