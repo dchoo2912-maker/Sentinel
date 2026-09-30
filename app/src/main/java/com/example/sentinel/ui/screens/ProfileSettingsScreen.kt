@@ -1,5 +1,6 @@
 package com.example.sentinel.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sentinel.util.QrCodeGenerator
 import com.example.sentinel.viewmodel.AuthViewModel
 import com.example.sentinel.viewmodel.DashboardViewModel
 
@@ -60,10 +62,9 @@ fun ProfileSettingsScreen(
                     
                     // Sentinel User ID Section
                     Spacer(modifier = Modifier.height(12.dp))
+                    var showQrDialog by remember { mutableStateOf(false) }
+
                     Surface(
-                        modifier = Modifier.clickable { 
-                            user?.id?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        },
                         color = Color.Black.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
@@ -71,13 +72,86 @@ fun ProfileSettingsScreen(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.clickable { 
+                                user?.id?.let { clipboardManager.setText(AnnotatedString(it)) }
+                            }) {
                                 Text("SENTINEL ID", color = Color.White.copy(alpha = 0.6f), fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                                 Text(user?.id ?: "Loading...", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
-                            Spacer(Modifier.width(12.dp))
-                            Icon(Icons.Default.ContentCopy, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { user?.id?.let { clipboardManager.setText(AnnotatedString(it)) } },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { showQrDialog = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.QrCode, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
                         }
+                    }
+
+                    if (showQrDialog && user != null) {
+                        AlertDialog(
+                            onDismissRequest = { showQrDialog = false },
+                            title = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Sentinel ID QR Code", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    Text(user.name, fontSize = 14.sp, color = Color.Gray)
+                                }
+                            },
+                            text = {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                                ) {
+                                    val qrBitmap = remember(user.id) {
+                                        QrCodeGenerator.generateQrCode(user.id, size = 512)
+                                    }
+                                    if (qrBitmap != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = Color.White,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                            modifier = Modifier.padding(12.dp)
+                                        ) {
+                                            Image(
+                                                bitmap = qrBitmap,
+                                                contentDescription = "Sentinel ID QR Code",
+                                                modifier = Modifier.size(200.dp).padding(12.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Surface(
+                                        color = Color(0xFFF1F5F9),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.clickable {
+                                            clipboardManager.setText(AnnotatedString(user.id))
+                                        }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(user.id, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+                                            Spacer(Modifier.width(8.dp))
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                        }
+                                    }
+                                    Text("Scan to quickly add as an Emergency Contact", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+                                }
+                            },
+                            confirmButton = {
+                                Button(onClick = { showQrDialog = false }) {
+                                    Text("Close")
+                                }
+                            }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

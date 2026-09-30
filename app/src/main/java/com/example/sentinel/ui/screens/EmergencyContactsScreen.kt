@@ -26,6 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sentinel.viewmodel.ContactsViewModel
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,19 +159,52 @@ fun AddContactDialog(
         }
     }
 
+    val scannerOptions = remember {
+        GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+    }
+    val scanner = remember(context) { GmsBarcodeScanning.getClient(context, scannerOptions) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Emergency Contact", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { contactPickerLauncher.launch(null) },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF), contentColor = Color(0xFF2563EB))
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.ContactPage, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Select from Phonebook")
+                    Button(
+                        onClick = { contactPickerLauncher.launch(null) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF), contentColor = Color(0xFF2563EB))
+                    ) {
+                        Icon(Icons.Default.ContactPage, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Phonebook", fontSize = 11.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            scanner.startScan()
+                                .addOnSuccessListener { barcode ->
+                                    barcode.rawValue?.let { scannedId ->
+                                        contactUserId = scannedId
+                                        viewModel.findUserById(scannedId)
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    android.util.Log.e("EmergencyContactsScreen", "QR Scan error", e)
+                                }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A), contentColor = Color.White)
+                    ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Scan QR", fontSize = 11.sp)
+                    }
                 }
                 
                 Text("OR FIND BY SENTINEL ID", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
