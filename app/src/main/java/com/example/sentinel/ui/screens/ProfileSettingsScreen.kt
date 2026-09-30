@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.sentinel.util.QrCodeGenerator
 import com.example.sentinel.viewmodel.AuthViewModel
 import com.example.sentinel.viewmodel.DashboardViewModel
+import com.example.sentinel.worker.LocationWorkManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,6 +169,8 @@ fun ProfileSettingsScreen(
                 }
             }
 
+            val context = LocalContext.current
+
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     QuickNavCard(Modifier.weight(1f), "Contacts", Icons.Default.Group, onNavigateToContacts)
@@ -176,6 +180,17 @@ fun ProfileSettingsScreen(
                 Spacer(modifier = Modifier.height(32.dp))
                 SettingsSection("PRIVACY & SECURITY") {
                     SettingsRow("Location Sharing", true)
+                    SettingsRow(
+                        label = "15-Min Background Location Sync",
+                        toggleState = true,
+                        onToggleChanged = { enabled ->
+                            if (enabled) {
+                                LocationWorkManager.schedule15MinLocationUpdates(context)
+                            } else {
+                                LocationWorkManager.stopLocationUpdates(context)
+                            }
+                        }
+                    )
                     SettingsRow("Anonymous Reporting", false)
                     SettingsRow("Data Sharing", null)
                 }
@@ -220,12 +235,30 @@ fun SettingsSection(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun SettingsRow(label: String, toggleState: Boolean? = null) {
-    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+fun SettingsRow(
+    label: String,
+    toggleState: Boolean? = null,
+    onToggleChanged: ((Boolean) -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(label, fontWeight = FontWeight.Medium)
         if (toggleState != null) {
             var checked by remember { mutableStateOf(toggleState) }
-            Switch(checked = checked, onCheckedChange = { checked = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF2563EB)))
+            Switch(
+                checked = checked,
+                onCheckedChange = {
+                    checked = it
+                    onToggleChanged?.invoke(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF2563EB)
+                )
+            )
         } else {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.Gray)
         }

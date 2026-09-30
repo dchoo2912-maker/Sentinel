@@ -22,11 +22,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.sentinel.data.LocationService
 import com.example.sentinel.navigation.SentinelNavGraph
-import com.google.android.gms.maps.model.LatLng
-import kotlinx.coroutines.launch
 import com.example.sentinel.ui.components.BottomNavBar
 import com.example.sentinel.ui.theme.SentinelTheme
 import com.example.sentinel.viewmodel.*
+import com.example.sentinel.worker.LocationWorkManager
+import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +67,9 @@ fun SentinelApp(startDestination: String = SentinelScreen.Splash.route) {
             contactsViewModel.setUser(user.id)
             emergencyViewModel.setUser(user.id)
             
+            // Schedule 15-minute background location updates
+            LocationWorkManager.schedule15MinLocationUpdates(context)
+            
             // Start location updates in a separate coroutine
             launch {
                 try {
@@ -91,6 +95,7 @@ fun SentinelApp(startDestination: String = SentinelScreen.Splash.route) {
                 }
             }
         } else if (authState is AuthState.Idle && currentRoute != SentinelScreen.Splash.route && currentRoute != SentinelScreen.Auth.route) {
+            LocationWorkManager.stopLocationUpdates(context)
             dashboardViewModel.clearUser()
             // Use a safer popUpTo that doesn't rely on Splash being there
             navController.navigate(SentinelScreen.Auth.route) {

@@ -73,6 +73,9 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.play.services.code.scanner)
 
+    // WorkManager (Periodic Background Tasks)
+    implementation(libs.androidx.work.runtime.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
