@@ -8,6 +8,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.example.sentinel.domain.RiskLevel
 import com.example.sentinel.viewmodel.DashboardViewModel
 import com.example.sentinel.viewmodel.NavigationViewModel
+import com.example.sentinel.viewmodel.TravelMode
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -170,6 +173,56 @@ fun SafeRouteNavigationScreen(
                 }
             }
             
+            // Travel Mode Switcher (Walking vs Driving)
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.95f),
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    TravelMode.entries.forEach { mode ->
+                        val isSelected = uiState.travelMode == mode
+                        Surface(
+                            onClick = {
+                                viewModel.setTravelMode(
+                                    mode,
+                                    context,
+                                    "AIzaSyCR1RVrLJCAH7DOPTw6qHVddHCu1-iTJ3M",
+                                    dashboardState.incidents
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) blue600 else Color.Transparent,
+                            contentColor = if (isSelected) Color.White else Color.Gray,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (mode == TravelMode.WALKING) Icons.AutoMirrored.Filled.DirectionsWalk else Icons.Default.DirectionsCar,
+                                    contentDescription = mode.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = mode.label,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (uiState.error != null) {
                 Surface(
                     color = Color.Red.copy(alpha = 0.9f),
@@ -206,7 +259,7 @@ fun SafeRouteNavigationScreen(
                 Column {
                     val routeRisk = remember(currentRoute.safetyScore) { RiskLevel.fromScore(currentRoute.safetyScore) }
                     Text(routeRisk.label + " ROUTE", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(routeRisk.color))
-                    Text("${currentRoute.distance} · ${currentRoute.duration}", color = slate400, fontSize = 14.sp)
+                    Text("${uiState.travelMode.label} · ${currentRoute.distance} · ${currentRoute.duration}", color = slate400, fontSize = 14.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 val routeRiskIcon = remember(currentRoute.safetyScore) { RiskLevel.fromScore(currentRoute.safetyScore) }

@@ -16,8 +16,9 @@ interface DirectionsService {
 }
 
 interface OsrmService {
-    @GET("route/v1/walking/{coordinates}")
+    @GET("route/v1/{profile}/{coordinates}")
     suspend fun getRoute(
+        @Path("profile") profile: String = "walking",
         @Path("coordinates") coordinates: String,
         @Query("overview") overview: String = "full",
         @Query("geometries") geometries: String = "polyline",

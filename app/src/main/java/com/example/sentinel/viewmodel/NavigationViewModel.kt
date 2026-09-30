@@ -17,6 +17,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.*
 
+enum class TravelMode(val label: String, val googleMode: String, val osrmProfile: String) {
+    WALKING("Walking", "walking", "walking"),
+    DRIVING("Driving", "driving", "driving")
+}
+
 data class NavigationUiState(
     val origin: LatLng? = null,
     val destination: LatLng? = null,
@@ -24,7 +29,8 @@ data class NavigationUiState(
     val routes: List<SafeRoute> = emptyList(),
     val selectedRouteIndex: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val travelMode: TravelMode = TravelMode.WALKING
 )
 
 data class SafeRoute(
@@ -55,6 +61,13 @@ class NavigationViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(origin = origin)
     }
 
+    fun setTravelMode(mode: TravelMode, context: Context, apiKey: String, incidents: List<IncidentReport>) {
+        _uiState.value = _uiState.value.copy(travelMode = mode)
+        if (_uiState.value.destinationName.isNotBlank()) {
+            findSafeRoute(context, _uiState.value.destinationName, apiKey, incidents)
+        }
+    }
+
     fun findSafeRoute(context: Context, destinationName: String, apiKey: String, incidents: List<IncidentReport>) {
         val origin = _uiState.value.origin
         if (origin == null) {
@@ -69,6 +82,7 @@ class NavigationViewModel : ViewModel() {
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, destinationName = destinationName)
+            val currentMode = _uiState.value.travelMode
             
             // Step 1: Try Google Directions (Needs Billing)
             try {
@@ -76,7 +90,8 @@ class NavigationViewModel : ViewModel() {
                 val response = googleDirectionsService.getDirections(
                     origin = "${origin.latitude},${origin.longitude}",
                     destination = destinationName,
-                    apiKey = apiKey
+                    apiKey = apiKey,
+                    mode = currentMode.googleMode
                 )
 
                 if (response.status == "OK") {
@@ -98,7 +113,10 @@ class NavigationViewModel : ViewModel() {
                 if (!results.isNullOrEmpty()) {
                     val destCoords = results[0]
                     val coordsParam = "${origin.longitude},${origin.latitude};${destCoords.longitude},${destCoords.latitude}"
-                    val response = osrmService.getRoute(coordsParam)
+                    val response = osrmService.getRoute(
+                        profile = currentMode.osrmProfile,
+                        coordinates = coordsParam
+                    )
                     
                     if (response.code == "Ok") {
                         processOsrmRoutes(response.routes, incidents)
@@ -169,7 +187,9 @@ class NavigationViewModel : ViewModel() {
         val origin = _uiState.value.origin ?: return
         val destLatLng = LatLng(origin.latitude + 0.005, origin.longitude + 0.005)
         val points = listOf(origin, LatLng(origin.latitude + 0.002, origin.longitude + 0.001), destLatLng)
-        val route = evaluateSafety(points, "1.2 km", "8 mins", incidents)
+        val isWalking = _uiState.value.travelMode == TravelMode.WALKING
+        val dur = if (isWalking) "15 mins" else "3 mins"
+        val route = evaluateSafety(points, "1.2 km", dur, incidents)
         updateUiWithRoutes(listOf(route))
     }
 
