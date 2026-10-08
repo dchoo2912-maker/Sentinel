@@ -18,6 +18,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "environment"
+    productFlavors {
+        create("develop") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "Sentinel Dev")
+        }
+        create("prod") {
+            dimension = "environment"
+            resValue("string", "app_name", "Sentinel")
+        }
+    }
+
     buildTypes {
         release {
             optimization {
@@ -31,6 +45,7 @@ android {
     }
     buildFeatures {
         compose = true
+        resValues = true
     }
 }
 

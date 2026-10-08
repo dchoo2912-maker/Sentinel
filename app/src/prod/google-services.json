@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "171617349163",
+    "project_id": "sentinel-bce09",
+    "storage_bucket": "sentinel-bce09.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:171617349163:android:5279d44210df864b9e846e",
+        "android_client_info": {
+          "package_name": "com.example.sentinel"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "171617349163-3qfkgru0uvkoqr73ib97htj13sca4te9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCR1RVrLJCAH7DOPTw6qHVddHCu1-iTJ3M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "171617349163-3qfkgru0uvkoqr73ib97htj13sca4te9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
