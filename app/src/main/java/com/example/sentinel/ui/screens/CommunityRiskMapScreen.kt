@@ -68,136 +68,158 @@ fun CommunityRiskMapScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // 1. Map Area
-        Box(modifier = Modifier.weight(1f)) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = true),
-                uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = true)
-            ) {
-                // Real Incident Markers from Firestore
-                uiState.incidents.forEach { incident ->
-                    Marker(
-                        state = rememberMarkerState(position = LatLng(incident.latitude, incident.longitude)),
-                        title = incident.category,
-                        onClick = {
-                            selectedIncident = incident
-                            true
-                        }
-                    )
-                }
-
-                // 1 KM RADIUS ZONE AROUND USER
-                Circle(
-                    center = uiState.currentLocation,
-                    radius = 1000.0, // 1 km
-                    fillColor = zoneColor.copy(alpha = 0.15f),
-                    strokeColor = zoneColor,
-                    strokeWidth = 4f
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Google Map Area (Full Screen)
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(isMyLocationEnabled = true),
+            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = true)
+        ) {
+            // Real Incident Markers from Firestore
+            uiState.incidents.forEach { incident ->
+                Marker(
+                    state = rememberMarkerState(position = LatLng(incident.latitude, incident.longitude)),
+                    title = incident.category,
+                    onClick = {
+                        selectedIncident = incident
+                        true
+                    }
                 )
+            }
 
-                // Show Active Contacts/Users Locations
-                uiState.activeLocations.forEach { (userId, location) ->
-                    if (userId != uiState.user?.id) {
-                        MarkerComposable(
-                            state = rememberMarkerState(position = location),
-                            title = "Active Sentinel User"
-                        ) {
-                            Surface(modifier = Modifier.size(32.dp), shape = CircleShape, color = Color.White, shadowElevation = 4.dp) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Person, null, tint = blue600, modifier = Modifier.size(20.dp))
-                                }
+            // 1 KM RADIUS ZONE AROUND USER
+            Circle(
+                center = uiState.currentLocation,
+                radius = 1000.0, // 1 km
+                fillColor = zoneColor.copy(alpha = 0.15f),
+                strokeColor = zoneColor,
+                strokeWidth = 4f
+            )
+
+            // Show Active Contacts/Users Locations
+            uiState.activeLocations.forEach { (userId, location) ->
+                if (userId != uiState.user?.id) {
+                    MarkerComposable(
+                        state = rememberMarkerState(position = location),
+                        title = "Active Sentinel User"
+                    ) {
+                        Surface(modifier = Modifier.size(32.dp), shape = CircleShape, color = Color.White, shadowElevation = 4.dp) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Person, null, tint = blue600, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
-                }
-            }
-
-            // FLOATING: Search Bar
-            Surface(
-                modifier = Modifier.statusBarsPadding().padding(16.dp).fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White,
-                shadowElevation = 8.dp
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, null, tint = slate400)
-                    TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search location...", color = slate400) },
-                        modifier = Modifier.weight(1f),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = {
-                            focusManager.clearFocus()
-                            scope.launch {
-                                try {
-                                    val results = geocoder.getFromLocationName(searchQuery, 1)
-                                    results?.firstOrNull()?.let { address ->
-                                        val newLatLng = LatLng(address.latitude, address.longitude)
-                                        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(newLatLng, 14f))
-                                    }
-                                } catch (e: Exception) { }
-                            }
-                        })
-                    )
-                }
-            }
-
-            // FLOATING: Danger Level Indicators
-            Row(
-                modifier = Modifier.statusBarsPadding().padding(top = 80.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Surface(color = zoneColor, shape = RoundedCornerShape(20.dp), shadowElevation = 6.dp) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Nearby: ${nearbyRisk.label}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Surface(color = Color.White.copy(alpha = 0.9f), shape = RoundedCornerShape(20.dp), shadowElevation = 4.dp) {
-                    Text("Map View: ${mapRisk.label}", color = Color(mapRisk.color), fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
-                }
-            }
-
-            // FLOATING: Safe Route FAB
-            FloatingActionButton(
-                onClick = onNavigateToSafeRoute,
-                containerColor = blue600,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Navigation, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Safe Route")
                 }
             }
         }
 
-        // 2. Risk Analysis Card
-        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shadowElevation = 16.dp) {
-            Column(modifier = Modifier.navigationBarsPadding().padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("1 km Radius Analysis", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Spacer(Modifier.weight(1f))
-                    Text(nearbyRisk.label, color = zoneColor, fontWeight = FontWeight.Black, fontSize = 14.sp)
+        // FLOATING: Search Bar
+        Surface(
+            modifier = Modifier.statusBarsPadding().padding(16.dp).fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Search, null, tint = slate400)
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search location...", color = slate400) },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        focusManager.clearFocus()
+                        scope.launch {
+                            try {
+                                val results = geocoder.getFromLocationName(searchQuery, 1)
+                                results?.firstOrNull()?.let { address ->
+                                    val newLatLng = LatLng(address.latitude, address.longitude)
+                                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(newLatLng, 14f))
+                                }
+                            } catch (e: Exception) { }
+                        }
+                    })
+                )
+            }
+        }
+
+        // FLOATING: Danger Level Indicators
+        Row(
+            modifier = Modifier.statusBarsPadding().padding(top = 80.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Surface(color = zoneColor, shape = RoundedCornerShape(20.dp), shadowElevation = 6.dp) {
+                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nearby: ${nearbyRisk.label}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Surface(color = Color.White.copy(alpha = 0.9f), shape = RoundedCornerShape(20.dp), shadowElevation = 4.dp) {
+                Text("Map View: ${mapRisk.label}", color = Color(mapRisk.color), fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+        }
+
+        // FLOATING: Risk Analysis Card above BottomNavBar
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White,
+            shadowElevation = 12.dp
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("1 km Radius Analysis", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.weight(1f))
+                    Surface(color = zoneColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                        Text(
+                            nearbyRisk.label,
+                            color = zoneColor,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth()) {
                     LegendItem(red600, "Nearby Risks", "${uiState.incidents.filter { calculateDistance(uiState.currentLocation.latitude, uiState.currentLocation.longitude, it.latitude, it.longitude) < 1.0 }.size}", Modifier.weight(1f))
                     LegendItem(blue600, "Active Users", "${uiState.activeLocations.size}", Modifier.weight(1f))
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = onReportIncident, modifier = Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = slate900), shape = RoundedCornerShape(12.dp)) {
-                    Text("Report an Incident", fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onReportIncident,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = slate900),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Report Incident", fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = onNavigateToSafeRoute,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = blue600),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Safe Route", fontSize = 12.sp)
+                    }
                 }
             }
         }

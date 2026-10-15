@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.tasks.await
 
 sealed class AuthState {
@@ -49,24 +50,40 @@ class AuthViewModel : ViewModel() {
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
+            val trimmedEmail = email.trim()
             try {
-                val result = auth.signInWithEmailAndPassword(email, password).await()
-                val firebaseUser = result.user
-                if (firebaseUser != null) {
-                    val user = User(
-                        id = firebaseUser.uid,
-                        name = firebaseUser.displayName ?: "User",
-                        email = firebaseUser.email ?: "",
-                        isPro = true
-                    )
-                    firestoreService.saveUserProfile(user)
-                    _authState.value = AuthState.Authenticated(user)
-                } else {
-                    _authState.value = AuthState.Error("Login failed")
+                withTimeout(10000) {
+                    val result = auth.signInWithEmailAndPassword(trimmedEmail, password).await()
+                    val firebaseUser = result.user
+                    if (firebaseUser != null) {
+                        val user = User(
+                            id = firebaseUser.uid,
+                            name = firebaseUser.displayName ?: "User",
+                            email = firebaseUser.email ?: "",
+                            isPro = true
+                        )
+                        _authState.value = AuthState.Authenticated(user)
+                        
+                        // Save profile in background without blocking UI login
+                        launch {
+                            try {
+                                firestoreService.saveUserProfile(user)
+                            } catch (e: Exception) {
+                                android.util.Log.w("AuthViewModel", "Failed to sync user profile", e)
+                            }
+                        }
+                    } else {
+                        _authState.value = AuthState.Error("Login failed")
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Sign-in error details", e)
-                _authState.value = AuthState.Error(e.message ?: "Login failed")
+                val errorMessage = if (e is kotlinx.coroutines.TimeoutCancellationException) {
+                    "Connection timed out. Please check your internet connection."
+                } else {
+                    e.message ?: "Login failed"
+                }
+                _authState.value = AuthState.Error(errorMessage)
             }
         }
     }
@@ -74,23 +91,40 @@ class AuthViewModel : ViewModel() {
     fun signUp(email: String, password: String, name: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
+            val trimmedEmail = email.trim()
             try {
-                val result = auth.createUserWithEmailAndPassword(email, password).await()
-                val firebaseUser = result.user
-                if (firebaseUser != null) {
-                    val user = User(
-                        id = firebaseUser.uid,
-                        name = name,
-                        email = firebaseUser.email ?: "",
-                        isPro = false
-                    )
-                    firestoreService.saveUserProfile(user)
-                    _authState.value = AuthState.Authenticated(user)
-                } else {
-                    _authState.value = AuthState.Error("Sign up failed")
+                withTimeout(10000) {
+                    val result = auth.createUserWithEmailAndPassword(trimmedEmail, password).await()
+                    val firebaseUser = result.user
+                    if (firebaseUser != null) {
+                        val user = User(
+                            id = firebaseUser.uid,
+                            name = name,
+                            email = firebaseUser.email ?: "",
+                            isPro = false
+                        )
+                        _authState.value = AuthState.Authenticated(user)
+
+                        // Save profile in background without blocking UI sign-up
+                        launch {
+                            try {
+                                firestoreService.saveUserProfile(user)
+                            } catch (e: Exception) {
+                                android.util.Log.w("AuthViewModel", "Failed to sync user profile", e)
+                            }
+                        }
+                    } else {
+                        _authState.value = AuthState.Error("Sign up failed")
+                    }
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(e.message ?: "Sign up failed")
+                android.util.Log.e("AuthViewModel", "Sign-up error details", e)
+                val errorMessage = if (e is kotlinx.coroutines.TimeoutCancellationException) {
+                    "Connection timed out. Please check your internet connection."
+                } else {
+                    e.message ?: "Sign up failed"
+                }
+                _authState.value = AuthState.Error(errorMessage)
             }
         }
     }
@@ -161,8 +195,16 @@ class AuthViewModel : ViewModel() {
                         email = firebaseUser.email ?: "",
                         isPro = true
                     )
-                    firestoreService.saveUserProfile(user)
                     _authState.value = AuthState.Authenticated(user)
+                    
+                    // Save profile in background
+                    viewModelScope.launch {
+                        try {
+                            firestoreService.saveUserProfile(user)
+                        } catch (e: Exception) {
+                            android.util.Log.w("AuthViewModel", "Failed to sync user profile", e)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Firebase sign-in failed", e)
@@ -184,14 +226,15 @@ class AuthViewModel : ViewModel() {
     }
 
     fun resetPassword(email: String) {
-        if (email.isBlank()) {
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isBlank()) {
             _authState.value = AuthState.Error("Please enter your email address first")
             return
         }
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                auth.sendPasswordResetEmail(email).await()
+                auth.sendPasswordResetEmail(trimmedEmail).await()
                 _authState.value = AuthState.Success("Password reset email sent. Check your inbox.")
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Reset Password Error", e)

@@ -79,29 +79,50 @@ fun HomeDashboard(viewModel: DashboardViewModel, onNavigate: (String) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp)
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(24.dp))
             Header(userName = uiState.user?.name ?: "User")
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             StatusCard(blue600, blue800, isProtected = uiState.isProtected, score = uiState.safetyScore)
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text("Quick Actions", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             QuickActionsGrid(onNavigate)
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text("Recent Activity", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        items(uiState.recentActivities) { activity ->
-            RecentActivityItem(activity, slate50)
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        item { Spacer(modifier = Modifier.height(100.dp)) }
+        if (uiState.recentActivities.isEmpty()) {
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = slate50
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Shield, contentDescription = null, tint = blue600, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("All Quiet Around You", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("No recent alerts logged. Your safety updates will appear here.", color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        } else {
+            items(uiState.recentActivities) { activity ->
+                RecentActivityItem(activity, slate50)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(120.dp)) }
     }
 }
 
