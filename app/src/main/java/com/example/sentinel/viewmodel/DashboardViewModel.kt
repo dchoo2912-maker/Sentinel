@@ -83,15 +83,33 @@ class DashboardViewModel : ViewModel() {
     private fun startFetchingData(userId: String) {
         dataJob?.cancel()
         dataJob = viewModelScope.launch {
+            val userActivitiesFlow = firestoreService.getRecentActivity(userId)
+            val allIncidentsFlow = firestoreService.getAllIncidents()
+
             launch {
-                firestoreService.getRecentActivity(userId).collect { activities ->
-                    _uiState.value = _uiState.value.copy(recentActivities = activities)
+                combine(userActivitiesFlow, allIncidentsFlow) { activities, incidents ->
+                    val incidentActivities = incidents.map { incident ->
+                        SafetyActivity(
+                            id = incident.id,
+                            userId = incident.userId,
+                            title = "Reported ${incident.category}",
+                            description = if (incident.description.isNotBlank()) incident.description else incident.address,
+                            timestamp = incident.timestamp,
+                            type = ActivityType.SOS
+                        )
+                    }
+
+                    (activities + incidentActivities)
+                        .distinctBy { if (it.id.isNotEmpty()) it.id else "${it.timestamp}_${it.title}" }
+                        .sortedByDescending { it.timestamp }
+                }.collect { combinedActivities ->
+                    _uiState.value = _uiState.value.copy(recentActivities = combinedActivities)
                     recalculateScore()
                 }
             }
-            
+
             launch {
-                firestoreService.getAllIncidents().collect { incidents ->
+                allIncidentsFlow.collect { incidents ->
                     _uiState.value = _uiState.value.copy(incidents = incidents)
                     recalculateScore()
                 }
@@ -122,7 +140,11 @@ class DashboardViewModel : ViewModel() {
             val dist = calculateDistance(lat, lng, incident.latitude, incident.longitude)
             dist < 5.0 // 5km radius
         }
-        return (100 - (nearbyIncidents.size * 5)).coerceIn(30, 100)
+        return when {
+            nearbyIncidents.size >= 2 -> 40
+            nearbyIncidents.size == 1 -> 75
+            else -> 100
+        }
     }
 
     private fun recalculateScore() {
@@ -139,13 +161,22 @@ class DashboardViewModel : ViewModel() {
             calculateDistance(userLoc.latitude, userLoc.longitude, incident.latitude, incident.longitude) < 1.0
         }
 
-        val generalScore = (100 - (nearbyIncidents5km.size * 5)).coerceIn(30, 100)
-        val immediateScore = (100 - (nearbyIncidents1km.size * 20)).coerceIn(0, 100) // Much steeper penalty for 1km
+        val generalScore = when {
+            nearbyIncidents1km.isNotEmpty() -> (50 - (nearbyIncidents1km.size * 15)).coerceIn(10, 50)
+            nearbyIncidents5km.isNotEmpty() -> (80 - (nearbyIncidents5km.size * 10)).coerceIn(55, 80)
+            else -> 100
+        }
+
+        val immediateScore = when {
+            nearbyIncidents1km.isNotEmpty() -> (40 - (nearbyIncidents1km.size * 20)).coerceIn(0, 40)
+            nearbyIncidents5km.isNotEmpty() -> (75 - (nearbyIncidents5km.size * 5)).coerceIn(50, 75)
+            else -> 100
+        }
 
         _uiState.value = _uiState.value.copy(
             safetyScore = generalScore,
             immediateSafetyScore = immediateScore,
-            isProtected = generalScore > 70
+            isProtected = generalScore > 65
         )
     }
 

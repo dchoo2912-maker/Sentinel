@@ -145,6 +145,8 @@ fun ReportIncidentScreen(viewModel: IncidentViewModel, onBack: () -> Unit) {
                     Text("Submit Report", fontSize = 16.sp)
                 }
             }
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 
