@@ -64,31 +64,24 @@ class IncidentViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
-                android.util.Log.d("IncidentViewModel", "Starting incident submission with timeout...")
-                withTimeout(10000) { // 10 second timeout
-                    firestoreService.saveIncident(
-                        IncidentReport(
-                            userId = currentUserId,
-                            category = _uiState.value.category,
-                            description = _uiState.value.description,
-                            address = "Current Location",
-                            latitude = _uiState.value.latitude,
-                            longitude = _uiState.value.longitude,
-                            isAnonymous = _uiState.value.isAnonymous,
-                            timestamp = System.currentTimeMillis()
-                        )
+                android.util.Log.d("IncidentViewModel", "Submitting incident report...")
+                firestoreService.saveIncident(
+                    IncidentReport(
+                        userId = currentUserId,
+                        category = _uiState.value.category,
+                        description = _uiState.value.description,
+                        address = if (_uiState.value.address.isNotBlank()) _uiState.value.address else "Current Location",
+                        latitude = _uiState.value.latitude,
+                        longitude = _uiState.value.longitude,
+                        isAnonymous = _uiState.value.isAnonymous,
+                        timestamp = System.currentTimeMillis()
                     )
-                }
+                )
                 android.util.Log.d("IncidentViewModel", "Incident submitted successfully")
                 _uiState.value = _uiState.value.copy(isSubmitting = false, isSubmitted = true)
             } catch (e: Exception) {
                 android.util.Log.e("IncidentViewModel", "Submission failed", e)
-                val errorMessage = if (e is kotlinx.coroutines.TimeoutCancellationException) {
-                    "Request timed out. Please check your internet connection."
-                } else {
-                    e.message ?: "Submission failed"
-                }
-                _uiState.value = _uiState.value.copy(isSubmitting = false, error = errorMessage)
+                _uiState.value = _uiState.value.copy(isSubmitting = false, error = e.message ?: "Submission failed")
             }
         }
     }

@@ -2,11 +2,14 @@ package com.example.sentinel.ui.screens
 
 import android.location.Geocoder
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -165,7 +168,7 @@ fun CommunityRiskMapScreen(
             }
         }
 
-        // FLOATING: Risk Analysis Card above BottomNavBar
+        // FLOATING: Scrollable Risk Analysis Card above BottomNavBar
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -175,7 +178,23 @@ fun CommunityRiskMapScreen(
             color = Color.White,
             shadowElevation = 12.dp
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 280.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                // Drag handle indicator
+                Surface(
+                    modifier = Modifier
+                        .size(36.dp, 4.dp)
+                        .align(Alignment.CenterHorizontally),
+                    shape = RoundedCornerShape(2.dp),
+                    color = Color(0xFFCBD5E1)
+                ) {}
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("1 km Radius Analysis", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(Modifier.weight(1f))
@@ -219,6 +238,55 @@ fun CommunityRiskMapScreen(
                         Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Safe Route", fontSize = 12.sp)
+                    }
+                }
+
+                // Scrollable Nearby Incident List inside the card
+                val nearbyIncidents = remember(uiState.incidents, uiState.currentLocation) {
+                    uiState.incidents.filter { incident ->
+                        calculateDistance(uiState.currentLocation.latitude, uiState.currentLocation.longitude, incident.latitude, incident.longitude) < 5.0
+                    }.take(5)
+                }
+
+                if (nearbyIncidents.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Color(0xFFE2E8F0))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Scroll for Local Incident Details", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    nearbyIncidents.forEach { incident ->
+                        val dist = calculateDistance(uiState.currentLocation.latitude, uiState.currentLocation.longitude, incident.latitude, incident.longitude)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedIncident = incident },
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF8FAFC)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Place, contentDescription = null, tint = red600, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(incident.category, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(
+                                        if (incident.description.isNotBlank()) incident.description else incident.address,
+                                        color = Color.Gray,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                                Text(
+                                    String.format(Locale.getDefault(), "%.1f km", dist),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
                 }
             }

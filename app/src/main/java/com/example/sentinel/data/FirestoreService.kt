@@ -22,7 +22,8 @@ class FirestoreService {
     suspend fun saveIncident(report: IncidentReport) {
         val incidentRef = db.collection("incidents").document()
         val reportWithId = report.copy(id = incidentRef.id)
-        incidentRef.set(reportWithId).await()
+        // Instant local write + background cloud synchronization
+        incidentRef.set(reportWithId)
         
         // Also log this as an activity
         logActivity(
@@ -42,7 +43,8 @@ class FirestoreService {
             id = activityRef.id,
             timestamp = System.currentTimeMillis()
         )
-        activityRef.set(activityWithServerTime).await()
+        // Instant local write + background cloud synchronization
+        activityRef.set(activityWithServerTime)
     }
 
     fun getRecentActivity(userId: String): Flow<List<SafetyActivity>> = callbackFlow {
