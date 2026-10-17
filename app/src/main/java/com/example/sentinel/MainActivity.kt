@@ -85,8 +85,10 @@ fun SentinelApp(startDestination: String = SentinelScreen.Splash.route) {
                             val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
                             val addressName = addresses?.firstOrNull()?.getAddressLine(0) ?: "Current Location"
                             incidentViewModel.updateLocation(location.latitude, location.longitude, addressName)
+                            emergencyViewModel.updateLocation(location.latitude, location.longitude, addressName)
                         } catch (e: Exception) {
                             incidentViewModel.updateLocation(location.latitude, location.longitude, "GPS Location")
+                            emergencyViewModel.updateLocation(location.latitude, location.longitude, "GPS Location")
                         }
                     }
                 } catch (e: SecurityException) {

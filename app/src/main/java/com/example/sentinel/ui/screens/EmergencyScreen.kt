@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.example.sentinel.viewmodel.EmergencyViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -33,6 +34,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 @Composable
 fun EmergencyScreen(viewModel: EmergencyViewModel, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     
     val smsPermissionState = rememberPermissionState(
         android.Manifest.permission.SEND_SMS
@@ -88,9 +90,10 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onBack: () -> Unit) {
                     modifier = Modifier.size(160.dp).pointerInput(Unit) {
                         detectTapGestures(onPress = { 
                             if (smsPermissionState.status.isGranted) {
-                                viewModel.startHolding()
+                                viewModel.startHolding(context)
                             } else {
                                 smsPermissionState.launchPermissionRequest()
+                                viewModel.startHolding(context)
                             }
                             try { awaitRelease() } finally { viewModel.stopHolding() }
                         })
