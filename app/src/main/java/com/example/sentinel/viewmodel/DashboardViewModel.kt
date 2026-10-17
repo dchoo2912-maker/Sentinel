@@ -19,6 +19,7 @@ data class DashboardUiState(
     val user: User? = null,
     val recentActivities: List<SafetyActivity> = emptyList(),
     val incidents: List<IncidentReport> = emptyList(),
+    val nearbyZoneReports: List<IncidentReport> = emptyList(),
     val safetyScore: Int = 100,
     val isProtected: Boolean = true,
     val currentLocation: LatLng = LatLng(34.0522, -118.2437), // Default to LA
@@ -176,6 +177,7 @@ class DashboardViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(
             safetyScore = generalScore,
             immediateSafetyScore = immediateScore,
+            nearbyZoneReports = nearbyIncidents5km,
             isProtected = generalScore > 65
         )
     }
