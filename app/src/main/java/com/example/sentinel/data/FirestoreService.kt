@@ -22,10 +22,14 @@ class FirestoreService {
     suspend fun saveIncident(report: IncidentReport) {
         val incidentRef = db.collection("incidents").document()
         val reportWithId = report.copy(id = incidentRef.id)
-        // Instant local write + background cloud synchronization
-        incidentRef.set(reportWithId)
+        try {
+            incidentRef.set(reportWithId).await()
+            android.util.Log.d("FirestoreService", "Incident saved to cloud successfully: ${reportWithId.id}")
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreService", "Cloud save failed, queuing offline", e)
+            incidentRef.set(reportWithId)
+        }
         
-        // Also log this as an activity
         logActivity(
             SafetyActivity(
                 userId = report.userId,
@@ -119,8 +123,27 @@ class FirestoreService {
                         try {
                             doc.toObject(IncidentReport::class.java)
                         } catch (e: Exception) {
-                            android.util.Log.w("FirestoreService", "Invalid incident data: ${doc.id}")
-                            null
+                            val cat = doc.getString("category") ?: "Incident"
+                            val desc = doc.getString("description") ?: ""
+                            val addr = doc.getString("address") ?: ""
+                            val lat = doc.getDouble("latitude") ?: (doc.get("latitude") as? Number)?.toDouble() ?: 0.0
+                            val lng = doc.getDouble("longitude") ?: (doc.get("longitude") as? Number)?.toDouble() ?: 0.0
+                            val ts = doc.getLong("timestamp") ?: (doc.get("timestamp") as? Number)?.toLong() ?: System.currentTimeMillis()
+                            val anon = doc.getBoolean("isAnonymous") ?: false
+                            val uId = doc.getString("userId") ?: ""
+                            if (lat != 0.0 || lng != 0.0) {
+                                IncidentReport(
+                                    id = doc.id,
+                                    userId = uId,
+                                    category = cat,
+                                    description = desc,
+                                    address = addr,
+                                    latitude = lat,
+                                    longitude = lng,
+                                    isAnonymous = anon,
+                                    timestamp = ts
+                                )
+                            } else null
                         }
                     }.sortedByDescending { it.timestamp }
                     trySend(incidents)

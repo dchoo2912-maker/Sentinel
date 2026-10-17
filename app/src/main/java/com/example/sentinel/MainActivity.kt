@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.sentinel.data.LocationService
@@ -120,12 +121,14 @@ fun SentinelApp(startDestination: String = SentinelScreen.Splash.route) {
                 BottomNavBar(
                     currentRoute = currentRoute,
                     onNavigate = { route: String ->
-                        navController.navigate(route) {
-                            popUpTo(SentinelScreen.Home.route) {
-                                saveState = true
+                        if (route != currentRoute) {
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 )
