@@ -1,7 +1,12 @@
 package com.example.sentinel.viewmodel
 
+import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.telephony.SmsManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sentinel.data.FirestoreService
@@ -129,40 +134,61 @@ class EmergencyViewModel : ViewModel() {
 
     private fun sendEmergencyMessages(context: Context? = null) {
         val contacts = _uiState.value.contacts
+        val locationText = _uiState.value.location
+        val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My current location is: $locationText"
+
         viewModelScope.launch {
-            try {
-                val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My location is: ${_uiState.value.location}"
-                
-                if (contacts.isNotEmpty() && context != null) {
+            if (context == null) return@launch
+
+            val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
+
+            // Step 1: Direct background SMS via SmsManager if permission is granted
+            var smsSentCount = 0
+            val hasSmsPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.SEND_SMS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasSmsPermission && phones.isNotEmpty()) {
+                try {
                     val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                         context.getSystemService(SmsManager::class.java)
                     } else {
                         @Suppress("DEPRECATION")
                         SmsManager.getDefault()
                     }
-                    var sentCount = 0
-                    contacts.forEach { contact ->
-                        if (contact.phone.isNotBlank()) {
-                            try {
-                                smsManager.sendTextMessage(contact.phone, null, message, null, null)
-                                sentCount++
-                            } catch (e: Exception) {
-                                android.util.Log.e("EmergencyViewModel", "Error sending SMS to ${contact.phone}", e)
-                            }
+                    phones.forEach { phone ->
+                        try {
+                            smsManager.sendTextMessage(phone, null, message, null, null)
+                            smsSentCount++
+                        } catch (e: Exception) {
+                            android.util.Log.e("EmergencyViewModel", "Error sending background SMS to $phone", e)
                         }
                     }
-                    if (sentCount > 0) {
-                        _uiState.value = _uiState.value.copy(statusMessage = "Emergency SMS sent to $sentCount contact(s)!")
-                    } else {
-                        _uiState.value = _uiState.value.copy(statusMessage = "SOS Activated! Community alert broadcasted.")
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(statusMessage = "SOS Activated! Community alert broadcasted.")
+                } catch (e: Exception) {
+                    android.util.Log.e("EmergencyViewModel", "SmsManager exception", e)
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("EmergencyViewModel", "Failed to send SMS", e)
-                _uiState.value = _uiState.value.copy(statusMessage = "SOS Activated! Community alert broadcasted.")
             }
+
+            // Step 2: Open native SMS app pre-filled with recipient phone numbers & emergency location message
+            try {
+                val recipients = phones.joinToString(";")
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse(if (recipients.isNotBlank()) "smsto:$recipients" else "smsto:")
+                    putExtra("sms_body", message)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                android.util.Log.e("EmergencyViewModel", "Could not launch SMS intent", e)
+            }
+
+            val status = when {
+                smsSentCount > 0 -> "Emergency SMS sent to $smsSentCount contact(s)! SMS app opened."
+                phones.isNotEmpty() -> "Emergency SMS prepared for ${phones.size} contact(s) in your SMS app!"
+                else -> "No emergency contacts saved. Pre-filled emergency alert in your SMS app!"
+            }
+            _uiState.value = _uiState.value.copy(statusMessage = status)
         }
     }
 

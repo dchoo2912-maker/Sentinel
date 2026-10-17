@@ -40,6 +40,12 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onBack: () -> Unit) {
         android.Manifest.permission.SEND_SMS
     )
 
+    LaunchedEffect(Unit) {
+        if (!smsPermissionState.status.isGranted) {
+            smsPermissionState.launchPermissionRequest()
+        }
+    }
+
     val red600 = Color(0xFFDC2626)
     val red950 = Color(0xFF450A0A)
     val slate900 = Color(0xFF0F172A)
