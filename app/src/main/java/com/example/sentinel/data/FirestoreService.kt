@@ -107,8 +107,7 @@ class FirestoreService {
 
     fun getAllIncidents(): Flow<List<IncidentReport>> = callbackFlow {
         val subscription = db.collection("incidents")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50)
+            .limit(100)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     android.util.Log.e("FirestoreService", "Incidents error", error)
@@ -123,7 +122,7 @@ class FirestoreService {
                             android.util.Log.w("FirestoreService", "Invalid incident data: ${doc.id}")
                             null
                         }
-                    }
+                    }.sortedByDescending { it.timestamp }
                     trySend(incidents)
                 }
             }

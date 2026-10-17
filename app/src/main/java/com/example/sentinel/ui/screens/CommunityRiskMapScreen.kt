@@ -150,21 +150,64 @@ fun CommunityRiskMapScreen(
             }
         }
 
-        // FLOATING: Danger Level Indicators
-        Row(
-            modifier = Modifier.statusBarsPadding().padding(top = 80.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+        // FLOATING: Danger Level View Selector (Choose Nearby vs Map View)
+        var isNearbyMode by remember { mutableStateOf(true) }
+        val activeRisk = if (isNearbyMode) nearbyRisk else mapRisk
+        val activeColor = Color(activeRisk.color)
+
+        Surface(
+            modifier = Modifier.statusBarsPadding().padding(top = 80.dp).align(Alignment.TopCenter),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
         ) {
-            Surface(color = zoneColor, shape = RoundedCornerShape(20.dp), shadowElevation = 6.dp) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Nearby: ${nearbyRisk.label}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+            Row(
+                modifier = Modifier.padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    onClick = { isNearbyMode = true },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isNearbyMode) activeColor else Color.Transparent
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = if (isNearbyMode) Color.White else Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Nearby: ${nearbyRisk.label}",
+                            color = if (isNearbyMode) Color.White else Color.DarkGray,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
-            }
-            Spacer(Modifier.width(8.dp))
-            Surface(color = Color.White.copy(alpha = 0.9f), shape = RoundedCornerShape(20.dp), shadowElevation = 4.dp) {
-                Text("Map View: ${mapRisk.label}", color = Color(mapRisk.color), fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+
+                Surface(
+                    onClick = { isNearbyMode = false },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (!isNearbyMode) activeColor else Color.Transparent
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Map,
+                            contentDescription = null,
+                            tint = if (!isNearbyMode) Color.White else Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Map View: ${mapRisk.label}",
+                            color = if (!isNearbyMode) Color.White else Color.DarkGray,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
 

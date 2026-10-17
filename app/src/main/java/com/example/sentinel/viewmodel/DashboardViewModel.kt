@@ -177,7 +177,7 @@ class DashboardViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(
             safetyScore = generalScore,
             immediateSafetyScore = immediateScore,
-            nearbyZoneReports = nearbyIncidents5km,
+            nearbyZoneReports = if (nearbyIncidents5km.isNotEmpty()) nearbyIncidents5km else incidents.take(5),
             isProtected = generalScore > 65
         )
     }
