@@ -22,7 +22,6 @@ android {
     productFlavors {
         create("develop") {
             dimension = "environment"
-            applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
             resValue("string", "app_name", "Sentinel Dev")
         }

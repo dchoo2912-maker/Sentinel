@@ -150,64 +150,30 @@ fun CommunityRiskMapScreen(
             }
         }
 
-        // FLOATING: Danger Level View Selector (Choose Nearby vs Map View)
-        var isNearbyMode by remember { mutableStateOf(true) }
-        val activeRisk = if (isNearbyMode) nearbyRisk else mapRisk
-        val activeColor = Color(activeRisk.color)
-
+        // FLOATING: Nearby Zone Risk Badge
         Surface(
             modifier = Modifier.statusBarsPadding().padding(top = 80.dp).align(Alignment.TopCenter),
-            shape = RoundedCornerShape(24.dp),
-            color = Color.White,
-            shadowElevation = 8.dp
+            shape = RoundedCornerShape(20.dp),
+            color = zoneColor,
+            shadowElevation = 6.dp
         ) {
             Row(
-                modifier = Modifier.padding(4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    onClick = { isNearbyMode = true },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isNearbyMode) activeColor else Color.Transparent
-                ) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = if (isNearbyMode) Color.White else Color.Gray,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Nearby: ${nearbyRisk.label}",
-                            color = if (isNearbyMode) Color.White else Color.DarkGray,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = { isNearbyMode = false },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (!isNearbyMode) activeColor else Color.Transparent
-                ) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Map,
-                            contentDescription = null,
-                            tint = if (!isNearbyMode) Color.White else Color.Gray,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Map View: ${mapRisk.label}",
-                            color = if (!isNearbyMode) Color.White else Color.DarkGray,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = if (nearbyRisk == RiskLevel.HIGH_RISK) Icons.Default.Warning else Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Nearby Zone: ${nearbyRisk.label}",
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 12.sp
+                )
             }
         }
 

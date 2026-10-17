@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sentinel.viewmodel.DashboardViewModel
 import com.example.sentinel.viewmodel.IncidentViewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -34,9 +35,23 @@ import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportIncidentScreen(viewModel: IncidentViewModel, onBack: () -> Unit) {
+fun ReportIncidentScreen(
+    viewModel: IncidentViewModel,
+    dashboardViewModel: DashboardViewModel,
+    onBack: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsState()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
     var showMapPicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(dashboardState.currentLocation) {
+        if (uiState.latitude == 0.0 && uiState.longitude == 0.0) {
+            viewModel.updateLocation(
+                dashboardState.currentLocation.latitude,
+                dashboardState.currentLocation.longitude
+            )
+        }
+    }
 
     val blue600 = Color(0xFF2563EB)
     val slate50 = Color(0xFFF8FAFC)

@@ -1,15 +1,15 @@
 {
   "project_info": {
     "project_number": "171617349163",
-    "project_id": "sentinel-dev",
-    "storage_bucket": "sentinel-dev.firebasestorage.app"
+    "project_id": "sentinel-bce09",
+    "storage_bucket": "sentinel-bce09.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:171617349163:android:5279d44210df864b9e846e",
         "android_client_info": {
-          "package_name": "com.example.sentinel.dev"
+          "package_name": "com.example.sentinel"
         }
       },
       "oauth_client": [

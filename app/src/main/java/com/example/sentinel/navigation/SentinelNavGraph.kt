@@ -97,6 +97,7 @@ fun SentinelNavGraph(
         composable(SentinelScreen.ReportIncident.route) { 
             ReportIncidentScreen(
                 viewModel = incidentViewModel,
+                dashboardViewModel = dashboardViewModel,
                 onBack = { navController.popBackStack() }
             ) 
         }
