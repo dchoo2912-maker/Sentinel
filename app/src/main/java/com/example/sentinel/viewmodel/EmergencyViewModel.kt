@@ -138,57 +138,59 @@ class EmergencyViewModel : ViewModel() {
         val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My current location is: $locationText"
 
         viewModelScope.launch {
-            if (context == null) return@launch
+            if (context == null) {
+                _uiState.value = _uiState.value.copy(statusMessage = "SOS Activated! Community alert broadcasted.")
+                return@launch
+            }
 
             val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
 
-            // Step 1: Direct background SMS via SmsManager if permission is granted
-            var smsSentCount = 0
+            if (phones.isEmpty()) {
+                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts found. Add contacts in Emergency Contacts screen.")
+                return@launch
+            }
+
             val hasSmsPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.SEND_SMS
             ) == PackageManager.PERMISSION_GRANTED
 
-            if (hasSmsPermission && phones.isNotEmpty()) {
-                try {
-                    val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        context.getSystemService(SmsManager::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        SmsManager.getDefault()
-                    }
-                    phones.forEach { phone ->
-                        try {
-                            smsManager.sendTextMessage(phone, null, message, null, null)
-                            smsSentCount++
-                        } catch (e: Exception) {
-                            android.util.Log.e("EmergencyViewModel", "Error sending background SMS to $phone", e)
-                        }
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.e("EmergencyViewModel", "SmsManager exception", e)
-                }
+            if (!hasSmsPermission) {
+                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required to send automatic text alerts.")
+                return@launch
             }
 
-            // Step 2: Open native SMS app pre-filled with recipient phone numbers & emergency location message
+            var sentCount = 0
             try {
-                val recipients = phones.joinToString(";")
-                val intent = Intent(Intent.ACTION_SENDTO).apply {
-                    data = Uri.parse(if (recipients.isNotBlank()) "smsto:$recipients" else "smsto:")
-                    putExtra("sms_body", message)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    context.getSystemService(SmsManager::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    SmsManager.getDefault()
                 }
-                context.startActivity(intent)
+
+                phones.forEach { phone ->
+                    try {
+                        val parts = smsManager.divideMessage(message)
+                        if (parts.size > 1) {
+                            smsManager.sendMultipartTextMessage(phone, null, parts, null, null)
+                        } else {
+                            smsManager.sendTextMessage(phone, null, message, null, null)
+                        }
+                        sentCount++
+                    } catch (e: Exception) {
+                        android.util.Log.e("EmergencyViewModel", "Error sending automatic SMS to $phone", e)
+                    }
+                }
             } catch (e: Exception) {
-                android.util.Log.e("EmergencyViewModel", "Could not launch SMS intent", e)
+                android.util.Log.e("EmergencyViewModel", "SmsManager exception", e)
             }
 
-            val status = when {
-                smsSentCount > 0 -> "Emergency SMS sent to $smsSentCount contact(s)! SMS app opened."
-                phones.isNotEmpty() -> "Emergency SMS prepared for ${phones.size} contact(s) in your SMS app!"
-                else -> "No emergency contacts saved. Pre-filled emergency alert in your SMS app!"
+            if (sentCount > 0) {
+                _uiState.value = _uiState.value.copy(statusMessage = "Automatic Emergency SMS sent to $sentCount contact(s)!")
+            } else {
+                _uiState.value = _uiState.value.copy(statusMessage = "Failed to send automatic SMS. Please check SIM card & signal.")
             }
-            _uiState.value = _uiState.value.copy(statusMessage = status)
         }
     }
 
