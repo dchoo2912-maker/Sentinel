@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -122,12 +124,43 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onBack: () -> Unit) {
             }
 
             if (uiState.isActivated) {
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Surface(color = Color.White.copy(alpha = 0.1f), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Surface(modifier = Modifier.size(10.dp), color = Color.Green, shape = CircleShape) {}
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Live Location: ${uiState.location}", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Backup Alert Dispatches:", color = slate400, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.sendWhatsAppAlert(context) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("WhatsApp", fontSize = 12.sp, color = Color.White)
+                    }
+
+                    Button(
+                        onClick = { viewModel.openSmsAppFallback(context) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Open SMS", fontSize = 12.sp, color = Color.White)
                     }
                 }
             }

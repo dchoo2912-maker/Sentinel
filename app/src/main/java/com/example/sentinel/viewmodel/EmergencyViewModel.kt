@@ -146,7 +146,7 @@ class EmergencyViewModel : ViewModel() {
             val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
 
             if (phones.isEmpty()) {
-                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts found. Add contacts in Emergency Contacts screen.")
+                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts saved. Use WhatsApp or SMS app below.")
                 return@launch
             }
 
@@ -156,7 +156,7 @@ class EmergencyViewModel : ViewModel() {
             ) == PackageManager.PERMISSION_GRANTED
 
             if (!hasSmsPermission) {
-                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required to send automatic text alerts.")
+                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required for auto-text. Use backup buttons below.")
                 return@launch
             }
 
@@ -189,8 +189,54 @@ class EmergencyViewModel : ViewModel() {
             if (sentCount > 0) {
                 _uiState.value = _uiState.value.copy(statusMessage = "Automatic Emergency SMS sent to $sentCount contact(s)!")
             } else {
-                _uiState.value = _uiState.value.copy(statusMessage = "Failed to send automatic SMS. Please check SIM card & signal.")
+                _uiState.value = _uiState.value.copy(statusMessage = "Carrier SMS failed. Use backup WhatsApp or SMS app below.")
             }
+        }
+    }
+
+    fun sendWhatsAppAlert(context: Context) {
+        val contacts = _uiState.value.contacts
+        val locationText = _uiState.value.location
+        val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My location is: $locationText"
+        val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
+
+        try {
+            val phone = phones.firstOrNull() ?: ""
+            val cleanPhone = phone.replace("+", "").replace(" ", "").replace("-", "")
+            val url = if (cleanPhone.isNotBlank()) {
+                "https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(message)}"
+            } else {
+                "https://api.whatsapp.com/send?text=${Uri.encode(message)}"
+            }
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse(url)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            _uiState.value = _uiState.value.copy(statusMessage = "WhatsApp Emergency Alert opened!")
+        } catch (e: Exception) {
+            android.util.Log.e("EmergencyViewModel", "WhatsApp dispatch error", e)
+            _uiState.value = _uiState.value.copy(statusMessage = "WhatsApp is not installed on this device.")
+        }
+    }
+
+    fun openSmsAppFallback(context: Context) {
+        val contacts = _uiState.value.contacts
+        val locationText = _uiState.value.location
+        val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My location is: $locationText"
+        val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
+
+        try {
+            val recipients = phones.joinToString(";")
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse(if (recipients.isNotBlank()) "smsto:$recipients" else "smsto:")
+                putExtra("sms_body", message)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            _uiState.value = _uiState.value.copy(statusMessage = "SMS app opened with emergency alert.")
+        } catch (e: Exception) {
+            android.util.Log.e("EmergencyViewModel", "SMS intent error", e)
         }
     }
 
