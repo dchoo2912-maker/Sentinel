@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -143,10 +144,12 @@ class EmergencyViewModel : ViewModel() {
                 return@launch
             }
 
-            val phones = contacts.mapNotNull { it.phone.trim().takeIf { p -> p.isNotBlank() } }
+            val phones = contacts.mapNotNull { contact ->
+                contact.phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").trim().takeIf { p -> p.isNotBlank() }
+            }
 
             if (phones.isEmpty()) {
-                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts saved. Use WhatsApp or SMS app below.")
+                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts found. Add contacts in Emergency Contacts screen.")
                 return@launch
             }
 
@@ -156,13 +159,16 @@ class EmergencyViewModel : ViewModel() {
             ) == PackageManager.PERMISSION_GRANTED
 
             if (!hasSmsPermission) {
-                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required for auto-text. Use backup buttons below.")
+                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required to send automatic text alerts.")
                 return@launch
             }
 
             var sentCount = 0
             try {
-                val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                val smsManager = if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    SmsManager.getSmsManagerForSubscriptionId(subId)
+                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     context.getSystemService(SmsManager::class.java)
                 } else {
                     @Suppress("DEPRECATION")
@@ -189,7 +195,7 @@ class EmergencyViewModel : ViewModel() {
             if (sentCount > 0) {
                 _uiState.value = _uiState.value.copy(statusMessage = "Automatic Emergency SMS sent to $sentCount contact(s)!")
             } else {
-                _uiState.value = _uiState.value.copy(statusMessage = "Carrier SMS failed. Use backup WhatsApp or SMS app below.")
+                _uiState.value = _uiState.value.copy(statusMessage = "Unable to send automatic SMS. Ensure your SIM card has text credit.")
             }
         }
     }
