@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -144,12 +145,21 @@ class EmergencyViewModel : ViewModel() {
                 return@launch
             }
 
+            // Check SIM card status
+            val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+            val isSimAvailable = telephonyManager?.simState == TelephonyManager.SIM_STATE_READY
+
             val phones = contacts.mapNotNull { contact ->
                 contact.phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").trim().takeIf { p -> p.isNotBlank() }
             }
 
+            if (!isSimAvailable) {
+                _uiState.value = _uiState.value.copy(statusMessage = "No SIM Card detected. SOS broadcasted over Wi-Fi. Use Wi-Fi Share below!")
+                return@launch
+            }
+
             if (phones.isEmpty()) {
-                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts found. Add contacts in Emergency Contacts screen.")
+                _uiState.value = _uiState.value.copy(statusMessage = "No emergency contacts saved. Use Wi-Fi Share or WhatsApp below.")
                 return@launch
             }
 
@@ -159,7 +169,7 @@ class EmergencyViewModel : ViewModel() {
             ) == PackageManager.PERMISSION_GRANTED
 
             if (!hasSmsPermission) {
-                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required to send automatic text alerts.")
+                _uiState.value = _uiState.value.copy(statusMessage = "SMS permission required for auto-text. Use Wi-Fi Share below!")
                 return@launch
             }
 
@@ -195,7 +205,7 @@ class EmergencyViewModel : ViewModel() {
             if (sentCount > 0) {
                 _uiState.value = _uiState.value.copy(statusMessage = "Automatic Emergency SMS sent to $sentCount contact(s)!")
             } else {
-                _uiState.value = _uiState.value.copy(statusMessage = "Unable to send automatic SMS. Ensure your SIM card has text credit.")
+                _uiState.value = _uiState.value.copy(statusMessage = "Unable to send SMS over carrier. Use Wi-Fi Share options below.")
             }
         }
     }
@@ -223,6 +233,27 @@ class EmergencyViewModel : ViewModel() {
         } catch (e: Exception) {
             android.util.Log.e("EmergencyViewModel", "WhatsApp dispatch error", e)
             _uiState.value = _uiState.value.copy(statusMessage = "WhatsApp is not installed on this device.")
+        }
+    }
+
+    fun shareEmergencyLocation(context: Context) {
+        val locationText = _uiState.value.location
+        val message = "SENTINEL EMERGENCY ALERT: I need immediate help! My current location is: $locationText"
+
+        try {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "SENTINEL EMERGENCY ALERT")
+                putExtra(Intent.EXTRA_TEXT, message)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val chooser = Intent.createChooser(intent, "Share Emergency Alert via Wi-Fi App").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            _uiState.value = _uiState.value.copy(statusMessage = "Opened Wi-Fi Emergency Share Sheet.")
+        } catch (e: Exception) {
+            android.util.Log.e("EmergencyViewModel", "Share intent error", e)
         }
     }
 
