@@ -78,12 +78,7 @@ class AuthViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Sign-in error details", e)
-                val errorMessage = if (e is kotlinx.coroutines.TimeoutCancellationException) {
-                    "Connection timed out. Please check your internet connection."
-                } else {
-                    e.message ?: "Login failed"
-                }
-                _authState.value = AuthState.Error(errorMessage)
+                _authState.value = AuthState.Error(getFriendlyAuthErrorMessage(e))
             }
         }
     }
@@ -119,12 +114,7 @@ class AuthViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Sign-up error details", e)
-                val errorMessage = if (e is kotlinx.coroutines.TimeoutCancellationException) {
-                    "Connection timed out. Please check your internet connection."
-                } else {
-                    e.message ?: "Sign up failed"
-                }
-                _authState.value = AuthState.Error(errorMessage)
+                _authState.value = AuthState.Error(getFriendlyAuthErrorMessage(e))
             }
         }
     }
@@ -238,8 +228,42 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Success("Password reset email sent. Check your inbox.")
             } catch (e: Exception) {
                 android.util.Log.e("AuthViewModel", "Reset Password Error", e)
-                _authState.value = AuthState.Error(e.message ?: "Failed to send reset email")
+                _authState.value = AuthState.Error(getFriendlyAuthErrorMessage(e))
             }
+        }
+    }
+
+    private fun getFriendlyAuthErrorMessage(e: Exception): String {
+        if (e is kotlinx.coroutines.TimeoutCancellationException) {
+            return "Connection timed out. Please check your internet connection."
+        }
+
+        val message = e.message ?: ""
+        val className = e.javaClass.simpleName
+
+        return when {
+            message.contains("badly formatted", ignoreCase = true) ||
+            message.contains("invalid-email", ignoreCase = true) -> {
+                "Please enter a valid email address."
+            }
+
+            message.contains("email-already-in-use", ignoreCase = true) ||
+            message.contains("already in use", ignoreCase = true) ||
+            className.contains("FirebaseAuthUserCollisionException") -> {
+                "An account with this email already exists."
+            }
+
+            message.contains("weak-password", ignoreCase = true) ||
+            message.contains("password should be at least", ignoreCase = true) -> {
+                "Password should be at least 6 characters long."
+            }
+
+            message.contains("network error", ignoreCase = true) ||
+            className.contains("FirebaseNetworkException") -> {
+                "Network error. Please check your internet connection."
+            }
+
+            else -> "Email or password are wrong"
         }
     }
 }
